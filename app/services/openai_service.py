@@ -35,7 +35,7 @@ assistant = client.beta.assistants.create(
 vector_store = client.beta.vector_stores.create(name="DocMoviData")
  
 # Ready the files for upload to OpenAI
-file_paths = ["leocisternasa/python_chatbot/data/DocMovi_Data.pdf"]
+file_paths = ["/app/data/DocMovi_Data.pdf"]
 file_streams = [open(path, "rb") for path in file_paths]
  
 # Use the upload and poll SDK helper to upload the files, add them to the vector store,
