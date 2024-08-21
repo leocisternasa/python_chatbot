@@ -3,7 +3,7 @@ from flask import current_app, jsonify
 import json
 import requests
 
-from app.services.openai_service import generate_response
+from app.services.openai_service import generate_response, OpenAIError
 import re
 
 
@@ -87,15 +87,25 @@ def process_whatsapp_message(body):
 
     # TODO: implement custom function here
     # response = generate_response(message_body)
+    try:
+        # OpenAI Integration
+        response = generate_response(message_body, wa_id, name)
+        response = process_text_for_whatsapp(response)
 
-    # OpenAI Integration
-    response = generate_response(message_body, wa_id, name)
-    response = process_text_for_whatsapp(response)
-
-    data = get_text_message_input(wa_id, response)
-    send_message(data)
+        data = get_text_message_input(wa_id, response)
+        send_message(data)
     
-    print(f"Processed message for {name} with wa_id: {wa_id}")
+        print(f"Processed message for {name} with wa_id: {wa_id}")
+    except OpenAIError as e:
+        error_message = "Lo siento, el servicio no está disponible en este momento. Por favor, intenta más tarde."
+        data = get_text_message_input(wa_id, error_message)
+        send_message(data)
+        print(f"OpenAI error for {name} with wa_id: {wa_id}: {str(e)}")
+    except Exception as e:
+        error_message = "Ocurrió un error inesperado. Por favor, intenta más tarde."
+        data = get_text_message_input(wa_id, error_message)
+        send_message(data)
+        print(f"Unexpected error for {name} with wa_id: {wa_id}: {str(e)}")    
 
 def is_valid_whatsapp_message(body):
     """
