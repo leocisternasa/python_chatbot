@@ -1,6 +1,6 @@
 import logging
 import json
-
+from openai import OpenAIError
 from flask import Blueprint, request, jsonify, current_app
 
 from .decorators.security import signature_required
@@ -84,6 +84,14 @@ def webhook_get():
 @webhook_blueprint.route("/webhook", methods=["POST"])
 @signature_required
 def webhook_post():
-    return handle_message()
+    try:
+        return handle_message()
+
+    except OpenAIError as e:
+        logging.error(f"OpenAI error: {str(e)}")
+        return jsonify({"status": "error", "message": "Servicio temporalmente no disponible"}), 503
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
+        return jsonify({"status": "error", "message": "Error interno del servidor"}), 500    
 
 

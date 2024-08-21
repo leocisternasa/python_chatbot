@@ -4,19 +4,31 @@ from dotenv import load_dotenv
 import os
 import time
 import logging
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from openai import OpenAIError
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_ASSISTANT_ID = os.getenv("OPENAI_ASSISTANT_ID")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+def create_assistant():
+    try:
+        assistant = client.beta.assistants.create(
+            name="WhatsApp DocMovi Asistente",
+            instructions="Eres una asistente virtual que ayuda a los usuarios de docmovi a entender el funcionamiento de la empresa, los servicios, planes, precios y todo lo relacionado. Actua de forma amable y convincente. Responde solo a preguntas que tengan que ver con DocMovi y de las que extraigas la informacion del documento que se te proporcionó como data. Cuando hagan preguntas que no tengan que ver con DocMovi y sus servicios o data responde amablemente que no estas autorizado a responder sobre otros temas.",
+            model="gpt-4o-mini",
+            tools=[{"type": "file_search"}],
+        )
+        return assistant
+    except OpenAIError as e:
+        logging.error(f"Error creating assistant: {str(e)}")
+        return None
 
-assistant = client.beta.assistants.create(
-  name="WhatsApp DocMovi Asistente",
-  instructions="Eres una asistente virtual que ayuda a los usuarios de docmovi a entender el funcionamiento de la empresa, los servicios, planes, precios y todo lo relacionado. Actua de forma amable y convincente. Responde solo a preguntas que tengan que ver con DocMovi y de las que extraigas la informacion del documento que se te proporcionó como data. Cuando hagan preguntas que no tengan que ver con DocMovi y sus servicios o data responde amablemente que no estas autorizado a responder sobre otros temas.",
-  model="gpt-4o-mini",
-  tools=[{"type": "file_search"}],
-)
+assistant = create_assistant()
+
+
+
 
 
 
@@ -35,7 +47,7 @@ assistant = client.beta.assistants.create(
 vector_store = client.beta.vector_stores.create(name="DocMoviData")
  
 # Ready the files for upload to OpenAI
-file_paths = ["/app/data/DocMovi_Data.pdf"]
+file_paths = ["/app/data/DocMovi_Data.pdf"] ## path in local: "/home/leocisal/python_bot/python-whatsapp-bot/data/DocMovi_Data.pdf"
 file_streams = [open(path, "rb") for path in file_paths]
  
 # Use the upload and poll SDK helper to upload the files, add them to the vector store,
@@ -104,21 +116,34 @@ def generate_response(message_body, wa_id, name):
         print(f"Retrieving existing thread for {name} with wa_id {wa_id}")
         thread = client.beta.threads.retrieve(thread_id)
 
-    message = client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=message_body,
-    )
+    try:
+        message = client.beta.threads.messages.create(
+            thread_id=thread_id,
+            role="user",
+            content=message_body,
+        )
 
-    new_message = run_assistant(thread)
-    if new_message:
-        print(f"To {name}: {new_message}")
-    else:
-        print(f"To {name}: No se pudo generar una respuesta.")
-    return new_message
+        new_message = run_assistant(thread)
+        if new_message:
+            logging.info(f"To {name}: {new_message}")
+            print(f"To {name}: {new_message}")
+        else:
+            logging.info(f"To {name}: No se pudo generar una respuesta.")
+        return new_message
+    except OpenAIError as e:
+        logging.error(f"OpenAI error in generate_response: {str(e)}")
+        return "Lo siento, el servicio no está disponible en este momento. Por favor, intenta más tarde."
+    except Exception as e:
+        logging.error(f"Unexpected error in generate_response: {str(e)}")
+        return "Ocurrió un error inesperado. Por favor, intenta más tarde."    
 # --------------------------------------------------------------
 # Run assistant
 # --------------------------------------------------------------
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=retry_if_exception_type(OpenAIError)
+)
 def run_assistant(thread):
     try:
         run = client.beta.threads.runs.create(
@@ -142,7 +167,10 @@ def run_assistant(thread):
             return new_message
         else:
             return "No se generó ninguna respuesta."
-
+    
+    except OpenAIError as e:
+        print(f"OpenAI error: {str(e)}")
+        raise  # Re-raise the exception to trigger a retry
     except Exception as e:
         print(f"Error in run_assistant: {str(e)}")
         return "Ocurrió un error inesperado."
