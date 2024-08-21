@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from app.config import load_configurations, configure_logging
 from .views import webhook_blueprint
 from openai import OpenAIError
