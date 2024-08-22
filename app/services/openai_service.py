@@ -108,6 +108,9 @@ def generate_response(message_body, wa_id, name):
     thread_id = check_if_thread_exists(wa_id)
 
     if thread_id is None:
+
+        initial_message = "Estoy procesando tu solicitud. Esto puede tardar un momento en la primera interacción."
+        send_message(get_text_message_input(wa_id, initial_message))
         print(f"Creating new thread for {name} with wa_id {wa_id}")
         thread = client.beta.threads.create()
         store_thread(wa_id, thread.id)
@@ -132,7 +135,9 @@ def generate_response(message_body, wa_id, name):
         return new_message
     except OpenAIError as e:
         logging.error(f"OpenAI error in generate_response: {str(e)}")
-        return "Lo siento, el servicio no está disponible en este momento. Por favor, intenta más tarde."
+        if retry.statistics['attempt_number'] >= 5:
+            return "Lo siento, el servicio no está disponible en este momento. Por favor, intenta más tarde."
+        raise    
     except Exception as e:
         logging.error(f"Unexpected error in generate_response: {str(e)}")
         return "Ocurrió un error inesperado. Por favor, intenta más tarde."    
