@@ -110,8 +110,8 @@ def generate_response(message_body, wa_id, name, send_message, get_text_message_
 
     if thread_id is None:
 
-        initial_message = "Iniciando conversación..."
-        send_message(get_text_message_input(wa_id, initial_message))
+        # initial_message = "Iniciando conversación..."
+        # send_message(get_text_message_input(wa_id, initial_message))
         print(f"Creating new thread for {name} with wa_id {wa_id}")
         thread = client.beta.threads.create()
         store_thread(wa_id, thread.id)
