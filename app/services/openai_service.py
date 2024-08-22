@@ -105,7 +105,7 @@ def store_thread(wa_id, thread_id):
 # --------------------------------------------------------------
 # Generate response
 # --------------------------------------------------------------
-def generate_response(message_body, wa_id, name, ):
+def generate_response(message_body, wa_id, name, send_message, get_text_message_input ):
     thread_id = check_if_thread_exists(wa_id)
 
     if thread_id is None:
