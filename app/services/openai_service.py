@@ -105,12 +105,12 @@ def store_thread(wa_id, thread_id):
 # --------------------------------------------------------------
 # Generate response
 # --------------------------------------------------------------
-def generate_response(message_body, wa_id, name, send_message, get_text_message_input):
+def generate_response(message_body, wa_id, name, ):
     thread_id = check_if_thread_exists(wa_id)
 
     if thread_id is None:
 
-        initial_message = "Estoy procesando tu solicitud. Esto puede tardar un momento en la primera interacción."
+        initial_message = "Iniciando conversación..."
         send_message(get_text_message_input(wa_id, initial_message))
         print(f"Creating new thread for {name} with wa_id {wa_id}")
         thread = client.beta.threads.create()
