@@ -6,6 +6,7 @@ import time
 import logging
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from openai import OpenAIError
+from app.utils.whatsapp_utils import send_message, get_text_message_input
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -147,7 +148,8 @@ def generate_response(message_body, wa_id, name):
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=4, max=10),
-    retry=retry_if_exception_type(OpenAIError)
+    retry=retry_if_exception_type(OpenAIError),
+    reraise=True
 )
 def run_assistant(thread):
     try:
